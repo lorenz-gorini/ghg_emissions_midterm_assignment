@@ -1,0 +1,34 @@
+### Midterm Assignment
+```{R}
+rm(list = ls())
+```
+
+```{R}
+setwd("C:\\Users\\iutente\\OneDrive\\UCL\\Programming for Social Data Science")
+
+requirements <- c('ggplot2',"tidyr","dplyr","readxl","gganimate","transformr")
+#install all packages that are not already installed
+install.packages(setdiff(requirements, rownames(installed.packages())))
+lapply(requirements, library, character.only=TRUE)
+
+```
+
+```{R}
+esg_raw <- read.csv("midterm_assignment\\data\\ESGData.csv")
+owid_co2_raw <- read.csv("https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.csv")
+```
+### ESG data
+We have 239 countries
+```{R}
+dim(esg_raw)
+names(esg_raw)
+head(esg_raw)
+esg_country_names <- unique(esg_raw[, "Country.Name"])
+length(esg_country_names)
+```
+Plot the count of NaN values for each year
+```{R}
+esg_columnar <- melt(esg_raw, id = c("Country.Name", "Country.Code", "Indicator.Name", "Indicator.Code"))
+```
+```{R}
+```
