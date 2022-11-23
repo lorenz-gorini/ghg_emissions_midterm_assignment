@@ -2,23 +2,112 @@
 ```{R}
 rm(list = ls())
 ```
-
 ```{R}
 setwd("C:\\Users\\iutente\\OneDrive\\UCL\\Programming for Social Data Science")
 
-requirements <- c('ggplot2',"tidyr","dplyr","readxl","gganimate","transformr")
-#install all packages that are not already installed
-install.packages(setdiff(requirements, rownames(installed.packages())))
-lapply(requirements, library, character.only=TRUE)
-
+requirements <- c("ggplot2", "tidyr", "dplyr", "readxl", "stringr", "gganimate", "transformr", "reshape")
+# install all packages that are not already installed
+install.packages(setdiff(requirements, rownames(installed.packages())), repos = "https://cran.r-project.org/")
+lapply(requirements, library, character.only = TRUE)
 ```
 
 ```{R}
 esg_raw <- read.csv("midterm_assignment\\data\\ESGData.csv")
 owid_co2_raw <- read.csv("https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.csv")
+# eea_ghg_data <- read_excel("midterm_assignment\\data\\EEA_GHG_proxy_2021.xlsx", sheet="EEA proxy dataset (plus)")
+# uk_emissions <- read_excel("midterm_assignment\\data\\Emission_map_UK_NAEIPointsSources_2020.xlsx", sheet = "Data")
 ```
-### ESG data
-We have 239 countries
+# ESG data
+We have 239 countries. For each country, we have 67 ESG indicators, even though some of them are containing many NaNs.
+Due to this, I create a barplot to show how many NaN are associated with each ESG indicator.
+Moreover, the dataset describes the trend of the ESG indicators from the year . Since I still have not taken a proper course to analyze time-series, I will select only 2 years out of the years analyzed.
+Particularly, the initial idea is to select the more recent year with the lowest number of NaNs, and another year from 10-20 years before in order to show a comparison. I will decide which years based on the number of NaNs contained for each year.
+So I create another barplot to show how many NaN are associated with each year (considering only the ESG indicators are more interested in).
+
+### Table
+Item | Price | # In stock
+---|---|---
+
+
+Economy
+- Agricultural land (% of land area)
+- Agriculture, forestry, and fishing, value added (% of GDP)
+- Annualized average growth rate in per capita real survey mean consumption or income, total population (%)
+- Electricity production from coal sources (% of total)
+- Energy imports, net (% of energy use)
+- Energy intensity level of primary energy (MJ/$2017 PPP GDP)
+- Energy use (kg of oil equivalent per capita)
+- Food production index (2014-2016 = 100)
+- Forest area (% of land area)
+- Gini index
+- GDP growth (annual %)
+- Income share held by lowest 20%
+- Individuals using the Internet (% of population)
+- Labor force participation rate, total (% of total population ages 15-64) (modeled ILO estimate)
+- Unemployment, total (% of total labor force) (modeled ILO estimate)
+- Population ages 65 and above (% of total population)
+- Population density (people per sq. km of land area)
+
+
+Governance
+- Government Effectiveness: Estimate
+- Government expenditure on education, total (% of government expenditure)
+- Control of Corruption: Estimate
+- 
+- Political Stability and Absence of Violence/Terrorism: Estimate
+- Regulatory Quality: Estimate
+- Research and development expenditure (% of GDP)
+- Rule of Law: Estimate
+
+
+Environment
+- Adjusted savings: natural resources depletion (% of GNI)
+- Adjusted savings: net forest depletion (% of GNI)
+- Annual freshwater withdrawals, total (% of internal resources)
+- Cooling Degree Days (projected change in number of degree Celsius)
+- CO2 emissions (metric tons per capita)
+- Droughts, floods, extreme temperatures (% of population, average 1990-2009)
+- GHG net emissions/removals by LUCF (Mt of CO2 equivalent)
+- Fossil fuel energy consumption (% of total)
+- Heat Index 35 (projected change in days)
+- Maximum 5-day Rainfall, 25-year Return Level (projected change in mm)
+- Mean Drought Index (projected change, unitless)
+- Methane emissions (metric tons of CO2 equivalent per capita)
+- Mammal species, threatened
+- Nitrous oxide emissions (metric tons of CO2 equivalent per capita)
+- PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)
+- Renewable electricity output (% of total electricity output)
+- Renewable energy consumption (% of total final energy consumption)
+- Terrestrial and marine protected areas (% of total territorial area)
+
+
+Social and Health
+Social | Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)
+Social | Children in employment, total (% of children ages 7-14)
+
+Social | Ease of doing business rank (1=most business-friendly regulations)
+- Fertility rate, total (births per woman)
+- Access to electricity (% of population)
+- Hospital beds (per 1,000 people)
+- Life expectancy at birth, total (years)
+- Literacy rate, adult total (% of people ages 15 and above)
+- Mortality rate, under-5 (per 1,000 live births)
+- Net migration
+- People using safely managed drinking water services (% of population)
+- People using safely managed sanitation services (% of population)
+- Prevalence of overweight (% of adults)
+- Prevalence of undernourishment (% of population)
+- School enrollment, primary (% gross)
+- School enrollment, primary and secondary (gross), gender parity index (GPI)
+
+Human Rights
+- Proportion of seats held by women in national parliaments (%)
+- Ratio of female to male labor force participation rate (%) (modeled ILO estimate)
+- Strength of legal rights index (0=weak to 12=strong)
+- Unmet need for contraception (% of married women ages 15-49)
+- Poverty headcount ratio at national poverty lines (% of population)
+
+### Summary
 ```{R}
 dim(esg_raw)
 names(esg_raw)
@@ -26,9 +115,133 @@ head(esg_raw)
 esg_country_names <- unique(esg_raw[, "Country.Name"])
 length(esg_country_names)
 ```
+## Plot the count of NA values for each year
 Plot the count of NaN values for each year
 ```{R}
-esg_columnar <- melt(esg_raw, id = c("Country.Name", "Country.Code", "Indicator.Name", "Indicator.Code"))
+id_cols <- c("Country.Name", "Country.Code", "Indicator.Name", "Indicator.Code")
+
+raw_year_cols <- setdiff(colnames(esg_raw), c(id_cols, "X"))
+# Modify only the columns defining the year
+colnames(esg_raw)[colnames(esg_raw) %in% raw_year_cols] <- str_replace(raw_year_cols, "X", "")
+clean_year_cols <- setdiff(colnames(esg_raw), c(id_cols, "X"))
+```
+I select few ESG indicators to check how many NaN they contain
+```{R}
+indicators_for_nan_plot <- c(
+    # "CO2 emissions (metric tons per capita)",
+    "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
+    "Gini index",
+    "GDP growth (annual %)"
+    # "Income share held by lowest 20%",
+    # "GHG net emissions/removals by LUCF (Mt of CO2 equivalent)"
+)
+
+esg_selected_indicators <- c(
+    "Access to electricity (% of population)",
+    "Adjusted savings: natural resources depletion (% of GNI)",
+    "Adjusted savings: net forest depletion (% of GNI)",
+    "Agricultural land (% of land area)",
+    "Agriculture, forestry, and fishing, value added (% of GDP)",
+    "Annual freshwater withdrawals, total (% of internal resources)",
+    "Annualized average growth rate in per capita real survey mean consumption or income, total population (%)",
+    "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
+    "Children in employment, total (% of children ages 7-14)",
+    "CO2 emissions (metric tons per capita)",
+    "Control of Corruption: Estimate",
+    "Cooling Degree Days (projected change in number of degree Celsius)",
+    "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
+    "Ease of doing business rank (1=most business-friendly regulations)",
+    "Electricity production from coal sources (% of total)",
+    "Energy imports, net (% of energy use)",
+    "Energy intensity level of primary energy (MJ/$2017 PPP GDP)",
+    "Energy use (kg of oil equivalent per capita)",
+    "Fertility rate, total (births per woman)",
+    "Food production index (2014-2016 = 100)",
+    "Forest area (% of land area)",
+    "Fossil fuel energy consumption (% of total)",
+    "GDP growth (annual %)",
+    "GHG net emissions/removals by LUCF (Mt of CO2 equivalent)",
+    "Gini index",
+    "Government Effectiveness: Estimate",
+    "Government expenditure on education, total (% of government expenditure)",
+    "Heat Index 35 (projected change in days)",
+    "Hospital beds (per 1,000 people)",
+    "Income share held by lowest 20%",
+    "Individuals using the Internet (% of population)",
+    "Labor force participation rate, total (% of total population ages 15-64) (modeled ILO estimate)",
+    "Life expectancy at birth, total (years)",
+    "Literacy rate, adult total (% of people ages 15 and above)",
+    "Mammal species, threatened",
+    "Maximum 5-day Rainfall, 25-year Return Level (projected change in mm)",
+    "Mean Drought Index (projected change, unitless)",
+    "Methane emissions (metric tons of CO2 equivalent per capita)",
+    "Mortality rate, under-5 (per 1,000 live births)",
+    "Net migration",
+    "Nitrous oxide emissions (metric tons of CO2 equivalent per capita)",
+    "Patent applications, residents",
+    "People using safely managed drinking water services (% of population)",
+    "People using safely managed sanitation services (% of population)",
+    "PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)",
+    "Political Stability and Absence of Violence/Terrorism: Estimate",
+    "Population ages 65 and above (% of total population)",
+    "Population density (people per sq. km of land area)",
+    "Poverty headcount ratio at national poverty lines (% of population)",
+    "Prevalence of overweight (% of adults)",
+    "Prevalence of undernourishment (% of population)",
+    "Proportion of seats held by women in national parliaments (%)",
+    "Ratio of female to male labor force participation rate (%) (modeled ILO estimate)",
+    "Regulatory Quality: Estimate",
+    "Renewable electricity output (% of total electricity output)",
+    "Renewable energy consumption (% of total final energy consumption)",
+    "Research and development expenditure (% of GDP)",
+    "Rule of Law: Estimate",
+    "School enrollment, primary (% gross)",
+    "School enrollment, primary and secondary (gross), gender parity index (GPI)",
+    "Scientific and technical journal articles",
+    "Strength of legal rights index (0=weak to 12=strong)",
+    "Terrestrial and marine protected areas (% of total territorial area)",
+    "Unemployment, total (% of total labor force) (modeled ILO estimate)",
+    "Unmet need for contraception (% of married women ages 15-49)"
+)
+```
+### Select 2 years from the time-series
+Count NaN for few ESG indicators in order to identify the year associated with the lowest number of NaNs
+```{R}
+esg_raw_selected_indicators <- esg_raw[esg_raw$Indicator.Name %in% indicators_for_nan_plot, ]
+nan_per_indicator <- esg_raw_selected_indicators %>%
+    group_by(Indicator.Name) %>%
+    summarise_all(~ sum(is.na(.)))
+
+# Transform the dataset into a columnar format (instead of having one column for each year)
+# NOTE: melt requires me to create a dataframe
+df <- data.frame(nan_per_indicator)
+colnames(df) <- colnames(nan_per_indicator)
+nan_per_year_and_indicator <- melt(df, id = c(id_cols, "X"))
+
+colnames(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "variable"] <- "Year"
+names(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "value"] <- "NA_count"
+nan_per_year_and_indicator <- subset(nan_per_year_and_indicator, select = -c(Country.Name, Country.Code, Indicator.Code, X))
+nan_per_year_and_indicator[, "Year"] <- as.numeric(nan_per_year_and_indicator[, "Year"])
+
+head(nan_per_year_and_indicator)
+names(nan_per_year_and_indicator)
+dim(nan_per_year_and_indicator)
+```
+
+### Barplot with NA count per year
+Plot a barplot where:
+- ``y`` = `number of NaNs` 
+- ``x`` = `Year`
+- ``color`` identifies multiple data series corresponding to different ESG indicators
+```{R}
+nan_per_year_plot <- ggplot(data = nan_per_year_and_indicator, aes(fill = Indicator.Name, x = Year, y = NA_count)) +
+    geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
+    theme(legend.position = "top") +
+    scale_x_discrete(breaks = round(seq(1960, 2020, by = 10)))
+
+ggsave("nan_per_year_and_indicator.png", nan_per_year_plot)
+```
+
 ```
 ```{R}
 ```
