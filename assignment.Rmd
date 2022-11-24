@@ -192,6 +192,17 @@ nan_per_indicator_df[, "Sum_over_Years"] <- rowSums(nan_per_indicator_df[, 5:nco
 
 tail(nan_per_indicator_df)
 ```
+### Plot
+```{R}
+nan_per_year_plot <- ggplot(
+    data = nan_per_indicator_df, aes(x = Indicator.Name, y = Sum_over_Years)
+) +
+    geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 35)) +
+    theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust = 1), legend.position = "right")
+
+ggsave("nan_per_esg_indicator.png", nan_per_year_plot)
+```
 # Transform the dataset into a columnar format (instead of having one column for each year)
 # NOTE: melt requires me to create a dataframe
 df <- data.frame(nan_per_indicator)
