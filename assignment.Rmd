@@ -168,14 +168,30 @@ esg_selected_indicators <- c(
     "Strength of legal rights index (0=weak to 12=strong)"
 )
 ```
-### Select 2 years from the time-series
-Count NaN for few ESG indicators in order to identify the year associated with the lowest number of NaNs
+### Analyze the distribution of NAs
+Analyze the count and distribution of NAs, in order to
+select the most interesting years and ESG indicators with the least number of NAs 
 ```{R}
-esg_raw_selected_indicators <- esg_raw[esg_raw$Indicator.Name %in% indicators_for_nan_plot, ]
+esg_raw_selected_indicators <- esg_raw[esg_raw$Indicator.Name %in% esg_selected_indicators, ]
 nan_per_indicator <- esg_raw_selected_indicators %>%
     group_by(Indicator.Name) %>%
-    summarise_all(~ sum(is.na(.)))
+    summarise_all(~ sum(is.na(.)) / length(esg_country_names))
 
+# NOTE: Since melt requires me to create a dataframe, I convert this into dataframe
+nan_per_indicator_df <- data.frame(nan_per_indicator)
+colnames(nan_per_indicator_df) <- colnames(nan_per_indicator)
+
+# Add a row with the count of NAs for each year but considering all the selected
+# ``esg_selected_indicators`` together
+total_na_per_year <- summarise_all(esg_raw_selected_indicators, ~ sum(is.na(.)) / nrow(esg_raw_selected_indicators))
+total_na_per_year[1, 1:4] <- "Sum_over_ESG_indicators"
+nan_per_indicator_df[nrow(nan_per_indicator_df) + 1, ] <- total_na_per_year
+
+# Add a column with the count of NAs for each ESG indicator (aggregated over the years)
+nan_per_indicator_df[, "Sum_over_Years"] <- rowSums(nan_per_indicator_df[, 5:ncol(nan_per_indicator_df)]) / (ncol(esg_raw_selected_indicators) - 4)
+
+tail(nan_per_indicator_df)
+```
 # Transform the dataset into a columnar format (instead of having one column for each year)
 # NOTE: melt requires me to create a dataframe
 df <- data.frame(nan_per_indicator)
