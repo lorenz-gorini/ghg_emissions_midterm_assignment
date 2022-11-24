@@ -203,16 +203,16 @@ nan_per_year_plot <- ggplot(
 
 ggsave("nan_per_esg_indicator.png", nan_per_year_plot)
 ```
+### Select 2 years from the time-series
+Count NA ratio for few selected ESG indicators in order to identify the year associated with the lowest number of NaNs
+
+```{R}
 # Transform the dataset into a columnar format (instead of having one column for each year)
-# NOTE: melt requires me to create a dataframe
-df <- data.frame(nan_per_indicator)
-colnames(df) <- colnames(nan_per_indicator)
-nan_per_year_and_indicator <- melt(df, id = c(id_cols, "X"))
+nan_per_year_and_indicator <- melt(nan_per_indicator_df, id = c(id_cols, "X"))
 
 colnames(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "variable"] <- "Year"
 names(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "value"] <- "NA_count"
 nan_per_year_and_indicator <- subset(nan_per_year_and_indicator, select = -c(Country.Name, Country.Code, Indicator.Code, X))
-nan_per_year_and_indicator[, "Year"] <- as.numeric(nan_per_year_and_indicator[, "Year"])
 
 head(nan_per_year_and_indicator)
 names(nan_per_year_and_indicator)
@@ -224,14 +224,43 @@ Plot a barplot where:
 - ``y`` = `number of NaNs` 
 - ``x`` = `Year`
 - ``color`` identifies multiple data series corresponding to different ESG indicators
+
+NOTE: The x-axis of the barplot contains years that are not equally distributed. This was the best tradeoff in order to:
+i. have a readable plot
+ii. highlight the trend where we see that the most recent years contains a lower number of NAs 
+iii. based on (ii), we wanted to be able to identify the number of NAs for all the most recent years
 ```{R}
-nan_per_year_plot <- ggplot(data = nan_per_year_and_indicator, aes(fill = Indicator.Name, x = Year, y = NA_count)) +
+min_year <- min(as.numeric(as.character(nan_per_year_and_indicator$Year)))
+# Select few ESG indicators and few years to make the plot more readable
+selected_years <- c(seq(min_year, 2004, by = 10), seq(2005, 2016, by = 3), seq(2017, 2021, by = 1))
+nan_per_year_and_select_indicator <- filter(
+    nan_per_year_and_indicator,
+    nan_per_year_and_indicator$Indicator.Name %in% c(
+        "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
+        "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
+        "Income share held by lowest 20%",
+        "People using safely managed drinking water services (% of population)",
+        "School enrollment, primary (% gross)"
+    ) & nan_per_year_and_indicator$Year %in% selected_years,
+)
+# Set the Year column as character so that it is even;y distributed over the x-axis
+nan_per_year_and_select_indicator$Year <- as.character(nan_per_year_and_select_indicator$Year)
+nan_per_year_plot <- ggplot(
+    data = nan_per_year_and_select_indicator, aes(fill = Indicator.Name, x = Year, y = NA_count)
+) +
     geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
-    theme(legend.position = "top") +
-    scale_x_discrete(breaks = round(seq(1960, 2020, by = 10)))
+    scale_fill_discrete(labels = function(x) str_wrap(x, width = 12)) +
+    # scale_x_discrete(breaks = round(selected_years)) +
+    theme(legend.position = "right")
 
 ggsave("nan_per_year_and_indicator.png", nan_per_year_plot)
 ```
+We observe that the number of NA varies slightly over the more recent years (2000-2020), but highly varies over the different ESG indicators.
+For time reasons, we will not analyze the number of NA further, even though some values could be interpolated based on the values in the previous and following years.
+ Since I see that in the year 2019 there are fewer NaNs I only select data for that year.
+```{R}
+```
+Plot the relevant variables like: 
 
 ```
 ```{R}
