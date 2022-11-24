@@ -48,12 +48,41 @@ Economy
 - Population ages 65 and above (% of total population)
 - Population density (people per sq. km of land area)
 
+Selected:
+# Economy
+- Agricultural land (% of land area)
+- Gini index
+- GDP growth (annual %)
+- Individuals using the Internet (% of population)
+- Unemployment, total (% of total labor force) (modeled ILO estimate)
+# Governance
+- Government Effectiveness: Estimate
+- Government expenditure on education, total (% of government expenditure)
+- Control of Corruption: Estimate
+# Environment
+- Adjusted savings: natural resources depletion (% of GNI)
+- CO2 emissions (metric tons per capita)
+- Droughts, floods, extreme temperatures (% of population, average 1990-2009)
+- GHG net emissions/removals by LUCF (Mt of CO2 equivalent)
+- Mammal species, threatened
+- Renewable energy consumption (% of total final energy consumption)
+# Human Rights
+- Ratio of female to male labor force participation rate (%) (modeled ILO estimate)
+- Strength of legal rights index (0=weak to 12=strong)
+# Social and Health
+- Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)
+- Children in employment, total (% of children ages 7-14)
+- Mortality rate, under-5 (per 1,000 live births)
+- People using safely managed drinking water services (% of population)
+- People using safely managed sanitation services (% of population)
+- Prevalence of undernourishment (% of population)
+- School enrollment, primary (% gross)
+- School enrollment, primary and secondary (gross), gender parity index (GPI)
 
 Governance
 - Government Effectiveness: Estimate
 - Government expenditure on education, total (% of government expenditure)
 - Control of Corruption: Estimate
-- 
 - Political Stability and Absence of Violence/Terrorism: Estimate
 - Regulatory Quality: Estimate
 - Research and development expenditure (% of GDP)
@@ -82,10 +111,9 @@ Environment
 
 
 Social and Health
-Social | Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)
-Social | Children in employment, total (% of children ages 7-14)
-
-Social | Ease of doing business rank (1=most business-friendly regulations)
+- Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)
+- Children in employment, total (% of children ages 7-14)
+- Ease of doing business rank (1=most business-friendly regulations)
 - Fertility rate, total (births per woman)
 - Access to electricity (% of population)
 - Hospital beds (per 1,000 people)
@@ -127,81 +155,17 @@ clean_year_cols <- setdiff(colnames(esg_raw), c(id_cols, "X"))
 ```
 I select few ESG indicators to check how many NaN they contain
 ```{R}
-indicators_for_nan_plot <- c(
-    # "CO2 emissions (metric tons per capita)",
-    "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
-    "Gini index",
-    "GDP growth (annual %)"
-    # "Income share held by lowest 20%",
-    # "GHG net emissions/removals by LUCF (Mt of CO2 equivalent)"
-)
-
 esg_selected_indicators <- c(
-    "Access to electricity (% of population)",
-    "Adjusted savings: natural resources depletion (% of GNI)",
-    "Adjusted savings: net forest depletion (% of GNI)",
     "Agricultural land (% of land area)",
-    "Agriculture, forestry, and fishing, value added (% of GDP)",
-    "Annual freshwater withdrawals, total (% of internal resources)",
-    "Annualized average growth rate in per capita real survey mean consumption or income, total population (%)",
     "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
-    "Children in employment, total (% of children ages 7-14)",
     "CO2 emissions (metric tons per capita)",
-    "Control of Corruption: Estimate",
-    "Cooling Degree Days (projected change in number of degree Celsius)",
     "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
-    "Ease of doing business rank (1=most business-friendly regulations)",
-    "Electricity production from coal sources (% of total)",
-    "Energy imports, net (% of energy use)",
-    "Energy intensity level of primary energy (MJ/$2017 PPP GDP)",
-    "Energy use (kg of oil equivalent per capita)",
-    "Fertility rate, total (births per woman)",
-    "Food production index (2014-2016 = 100)",
-    "Forest area (% of land area)",
-    "Fossil fuel energy consumption (% of total)",
     "GDP growth (annual %)",
-    "GHG net emissions/removals by LUCF (Mt of CO2 equivalent)",
-    "Gini index",
-    "Government Effectiveness: Estimate",
-    "Government expenditure on education, total (% of government expenditure)",
-    "Heat Index 35 (projected change in days)",
-    "Hospital beds (per 1,000 people)",
     "Income share held by lowest 20%",
-    "Individuals using the Internet (% of population)",
-    "Labor force participation rate, total (% of total population ages 15-64) (modeled ILO estimate)",
-    "Life expectancy at birth, total (years)",
     "Literacy rate, adult total (% of people ages 15 and above)",
-    "Mammal species, threatened",
-    "Maximum 5-day Rainfall, 25-year Return Level (projected change in mm)",
-    "Mean Drought Index (projected change, unitless)",
-    "Methane emissions (metric tons of CO2 equivalent per capita)",
-    "Mortality rate, under-5 (per 1,000 live births)",
-    "Net migration",
-    "Nitrous oxide emissions (metric tons of CO2 equivalent per capita)",
-    "Patent applications, residents",
     "People using safely managed drinking water services (% of population)",
-    "People using safely managed sanitation services (% of population)",
-    "PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)",
-    "Political Stability and Absence of Violence/Terrorism: Estimate",
-    "Population ages 65 and above (% of total population)",
-    "Population density (people per sq. km of land area)",
-    "Poverty headcount ratio at national poverty lines (% of population)",
-    "Prevalence of overweight (% of adults)",
-    "Prevalence of undernourishment (% of population)",
-    "Proportion of seats held by women in national parliaments (%)",
-    "Ratio of female to male labor force participation rate (%) (modeled ILO estimate)",
-    "Regulatory Quality: Estimate",
-    "Renewable electricity output (% of total electricity output)",
-    "Renewable energy consumption (% of total final energy consumption)",
-    "Research and development expenditure (% of GDP)",
-    "Rule of Law: Estimate",
     "School enrollment, primary (% gross)",
-    "School enrollment, primary and secondary (gross), gender parity index (GPI)",
-    "Scientific and technical journal articles",
-    "Strength of legal rights index (0=weak to 12=strong)",
-    "Terrestrial and marine protected areas (% of total territorial area)",
-    "Unemployment, total (% of total labor force) (modeled ILO estimate)",
-    "Unmet need for contraception (% of married women ages 15-49)"
+    "Strength of legal rights index (0=weak to 12=strong)"
 )
 ```
 ### Select 2 years from the time-series
