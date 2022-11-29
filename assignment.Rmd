@@ -319,6 +319,113 @@ esg_clean <- data.frame(drop_na(esg_clean))
 colnames(esg_clean) <- clean_cols
 head(esg_clean)
 ```
+
+### Cleaning the CO2 emission dataset
+1. Filter on the Year column based on the same selected year 2018, and then drop the ``year`` column:
+```{R}
+owid_co2_2018 <- owid_co2_raw[owid_co2_raw[, "year"] == 2018, ]
+owid_co2_2018 <- subset(owid_co2_2018, select = -c(year))
+```
+2. Filter the Country codes, based on the ones available in the ESG dataset
+```{R}
+esg_clean_countries <- unique(esg_clean[["Country.Code"]])
+owid_co2_2018_countries <- owid_co2_2018[owid_co2_2018[, "iso_code"] %in% esg_clean_countries, ]
+```
+3. Compute the ratio of NAs for each covariate
+```{R}
+owid_co2_id_cols <- c("country", "iso_code")
+selected_covariates_co2 <- c("gdp", "co2", "population", "co2_per_capita", "total_ghg", "total_ghg_excluding_lucf", "trade_co2")
+owid_co2_few_indicators <- subset(owid_co2_2018_countries, select = c(owid_co2_id_cols, selected_covariates_co2))
+# Compute the ratio of NAs for each covariate
+total_na_per_column <- summarise_all(owid_co2_few_indicators, ~ sum(is.na(.)) / nrow(owid_co2_few_indicators))
+```
+According to the results, there are no NAs in the CO2 dataset, expect for 5% in ``gdp`` column and 19% in ``trade_co2``.
+For this reason, we decide to use ``co2_per_capita``, ``total_ghg`` and
+``total_ghg_excluding_lucf`` as outcome variables. 
+4. Based on previous results, we drop ``trade_co2`` column and we drop NAs from ``gdp`` column:
+```{R}
+owid_co2_few_indicators <- subset(owid_co2_few_indicators, select = -c(trade_co2))
+owid_co2_clean <- drop_na(owid_co2_few_indicators, "gdp")
+```
+
+### Merging Datasets based on country codes
+Out of the original 191 common countries, we only have 95 countries, in common with the second dataset, after filtering out the rows with NAs
+```{R}
+esg_clean_countries <- unique(esg_clean[["Country.Code"]])
+owid_co2_countries <- unique(owid_co2_clean[, "iso_code"])
+length(intersect(owid_co2_countries, esg_clean_countries))
+```
+```{R}
+merged_dataset <- merge(owid_co2_clean, esg_clean, by.x = "iso_code", by.y = "Country.Code")
+dim(merged_dataset)
+```
+1. Renaming columns:
+```{R}
+merged_dataset <- dplyr::rename(merged_dataset, country_name_esg = Country.Name, country_name_co2 = country)
+# Convert to dataframe to avoid names with spaces, symbols or unsupported characters
+merged_dataset <- data.frame(merged_dataset)
+colnames(merged_dataset)
+```
+2. Compute values per capita:
+```{R}
+merged_dataset[,"total_ghg_per_capita"] <- merged_dataset[,"total_ghg"] / merged_dataset[,"population"]
+merged_dataset[,"total_ghg_excluding_lucf_per_capita"] <- merged_dataset[,"total_ghg_excluding_lucf"] / merged_dataset[,"population"]
+```
+
+# Ordinary Linear Regression (OLS)
+We used an OLS model according to the formula:
+```{Latex}
+co2_per_capita ~ gdp + [esg_selected_indicators]
+```
+
+### Plotting the distribution of the OLS covariates
+
+```{R}
+metadata_cols <- c("iso_code", "country_name_co2", "country_name_esg")
+co2_cols <- c(
+    "gdp",
+    "co2",
+    "population",
+    "co2_per_capita",
+    "total_ghg",
+    "total_ghg_excluding_lucf",
+    "total_ghg_per_capita",
+    "total_ghg_excluding_lucf_per_capita"
+)
+esg_cols <- setdiff(colnames(merged_dataset), c(metadata_cols,co2_cols))
+
+covariate_sum <- paste(c(esg_cols, "gdp"), sep =" ", collapse=" + ")
+co2_ols_formula <- as.formula(paste("co2_per_capita ~ ",covariate_sum,sep = ""))
+print(paste0("Computing OLS with formula: ", co2_ols_formula)
+model_1 <- lm(formula=co2_ols_formula, data=merged_dataset)
+summary(model_1)
+```
+```{R}
+
+for (indicator_id in 1:length(indicator_cols)) {
+    indicator_name <- indicator_cols[indicator_id]
+    histo_plot <- ggplot(esg_clean, aes(x = esg_clean[, indicator_name])) +
+        theme(text = element_text(size = 20)) +
+        geom_histogram(aes(fill = ..count..), bins = 10, color = "black") +
+        scale_x_continuous(
+            name = indicator_name,
+            # breaks = seq(0, max(), 25),
+            # limits = c(0, 200)
+        ) +
+        scale_y_continuous(name = "Count") +
+        ggtitle(indicator_name) +
+        # scale_fill_gradient("Count", low = "green", high = "red")
+        geom_density(alpha = .4, fill = "#FF6666")
+
+
+    # geom_bar(colour = "black", fill = "white") + # bins=10, stat="count",
+    #     geom_density(alpha = .2, fill = "#FF6666")
+    filename <- str_replace(paste0("distribution_", indicator_name, ".png"), "%", "")
+    print(paste0("Saving to ", filename))
+    ggsave(filename, histo_plot)
+}
+```
+
 ```
 Plot the relevant variables like: 
 
