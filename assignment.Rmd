@@ -216,14 +216,15 @@ i. have a readable plot
 ii. highlight the trend where we see that the most recent years contains a lower number of NAs 
 iii. based on (ii), we wanted to be able to identify the number of NAs for all the most recent years
 ```{R}
-min_year <- min(as.numeric(as.character(nan_per_year_and_indicator$Year)))
+# min_year <- min(as.numeric(as.character(nan_per_year_and_indicator$Year)))
 # Select few ESG indicators and few years to make the plot more readable
-selected_years <- c(seq(min_year, 2004, by = 10), seq(2005, 2016, by = 3), seq(2017, 2021, by = 1))
+selected_years <- c(seq(1960, 2004, by = 10), seq(2005, 2016, by = 3), seq(2017, 2021, by = 1))
 nan_per_year_and_select_indicator <- filter(
     nan_per_year_and_indicator,
     nan_per_year_and_indicator$Indicator.Name %in% c(
-        "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
-        "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
+        # "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
+        # "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
+        "Sum_over_ESG_indicators",
         "Income share held by lowest 20%",
         "People using safely managed drinking water services (% of population)",
         "School enrollment, primary (% gross)"
@@ -241,10 +242,83 @@ nan_per_year_plot <- ggplot(
 
 ggsave("nan_per_year_and_indicator.png", nan_per_year_plot)
 ```
+
 We observe that the number of NA varies slightly over the more recent years (2000-2020), but highly varies over the different ESG indicators.
 For time reasons, we will not analyze the number of NA further, even though some values could be interpolated based on the values in the previous and following years.
- Since I see that in the year 2019 there are fewer NaNs I only select data for that year.
+Since I see that in the year 2019 there are fewer NaNs I only select data for that year.
 ```{R}
+SELECTED_YEAR <- "2018"
+esg_year_2018_columnar <- esg_clean_fewer_indicators[, c(id_cols_co2, SELECTED_YEAR)]
+
+esg_year_2018 <- pivot_wider(
+    esg_year_2018_columnar,
+    names_from = "Indicator.Name",
+    values_from = SELECTED_YEAR
+)
+head(esg_year_2018)
+```
+
+#### Plot NAs for the selected year
+After selecting the year, we plot the NA count for the ESG indicators when considering the selected year 2018.
+Another possible approach was to consider the mean of the ESG indicator when considering not only the year 2018, but averaging the value in the year 2018 with the ones from the closest years 2017 and 2019.
+On the other hand the plot does not show a significant decrease in the NA count.
+
+```{R}
+nan_per_2018_plot <- ggplot(
+    data = nan_per_indicator_df, aes(x = Indicator.Name, y = nan_per_indicator_df[, SELECTED_YEAR])
+) +
+    geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 60)) +
+    theme(
+        text = element_text(size = 14),
+        aspect.ratio = 5 / 9,
+        axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1),
+        legend.position = "right"
+    )
+
+ggsave(paste0("nan_", SELECTED_YEAR, "_per_esg_indicator.png"), nan_per_2018_plot, width = 12, height = 10)
+```
+```{R}
+AVG_YEARS <- c(as.character(as.numeric(SELECTED_YEAR) - 1), SELECTED_YEAR, as.character(as.numeric(SELECTED_YEAR) + 1))
+nan_per_2018_plot <- ggplot(
+    data = nan_per_indicator_df, aes(x = Indicator.Name, y = rowMeans(nan_per_indicator_df[, AVG_YEARS]))
+) +
+    geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 60)) +
+    theme(
+        text = element_text(size = 14),
+        aspect.ratio = 5 / 9,
+        axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1),
+        legend.position = "right"
+    )
+
+ggsave("nan_mean_2018_per_esg_indicator.png", nan_per_2018_plot, width = 12, height = 10)
+```
+Based on the count of NAs for the selected years and the criteria described above,
+we selected the following ESG indicators:
+```{R}
+esg_selected_indicators <- c(
+    # Economy
+    "Adjusted savings: natural resources depletion (% of GNI)",
+    "Individuals using the Internet (% of population)",
+    # Governance
+    "Government Effectiveness: Estimate",
+    "Government expenditure on education, total (% of government expenditure)",
+    "Control of Corruption: Estimate",
+    # Human Rights
+    "Ratio of female to male labor force participation rate (%) (modeled ILO estimate)",
+    # Social and Health
+    "Mortality rate, under-5 (per 1,000 live births)",
+    "School enrollment, primary (% gross)"
+)
+clean_cols <- c("Country.Code", "Country.Name", esg_selected_indicators)
+esg_clean <- esg_year_2018[, clean_cols]
+esg_clean <- data.frame(drop_na(esg_clean))
+# After conversion to dataframe, the spaces in the names are replaced by "." and
+# the names are shortened, so revert this back
+colnames(esg_clean) <- clean_cols
+head(esg_clean)
+```
 ```
 Plot the relevant variables like: 
 
