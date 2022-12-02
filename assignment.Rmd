@@ -2,7 +2,11 @@
 The following report analyzes the relation between the ESG indicators, the CO2
 emissions and the GDP of 191 countries around the world.
 
-Particularly, this paper is aimed at testing the hypothesis where lower GDP values lead to lower CO2 emissions per capita, but higher CO2 emissions per Watt. Moreover we want to analyze the relationship between other ESG indicators (e.g. gender equity, fair distribution of well-being (???), government expenditure on education, control of corruption, political stability) lead to higher CO2 emissions per capita.
+Particularly, this paper is aimed at testing the hypothesis where lower GDP values lead
+to lower CO2 emissions per capita, but higher CO2 emissions per Watt. Moreover we want
+to analyze the relationship between other ESG indicators (e.g. gender equity, fair distribution of well-being,
+ government expenditure on education, control of corruption, political stability)
+ lead to higher CO2 emissions per capita.
 
 - gender equity
 - access to the Internet
@@ -12,19 +16,16 @@ Particularly, this paper is aimed at testing the hypothesis where lower GDP valu
 
 ```{R}
 rm(list = ls())
-setwd("C:\\Users\\iutente\\OneDrive\\UCL\\Programming for Social Data Science")
 
-requirements <- c("ggplot2", "tidyr", "dplyr", "readxl", "stringr", "gganimate", "transformr", "reshape")
+requirements <- c("ggplot2", "tidyr", "dplyr", "readxl", "stringr", "gganimate", "gridExtra", "ggpubr", "transformr", "reshape", "broom")
 # install all packages that are not already installed
 install.packages(setdiff(requirements, rownames(installed.packages())), repos = "https://cran.r-project.org/")
 lapply(requirements, library, character.only = TRUE)
 ```
 
 ```{R}
-esg_raw <- read.csv("midterm_assignment\\data\\ESGData.csv")
-owid_co2_raw <- read.csv("midterm_assignment\\data\\owid-co2-data.csv") # https://nyc3.digitaloceanspaces.com/owid-public/data/co2/owid-co2-data.csv")
-# eea_ghg_data <- read_excel("midterm_assignment\\data\\EEA_GHG_proxy_2021.xlsx", sheet="EEA proxy dataset (plus)")
-# uk_emissions <- read_excel("midterm_assignment\\data\\Emission_map_UK_NAEIPointsSources_2020.xlsx", sheet = "Data")
+esg_raw <- read.csv("data\\ESGData.csv")
+owid_co2_raw <- read.csv("data\\owid-co2-data.csv")
 ```
 
 # ESG data
@@ -48,15 +49,15 @@ length(esg_country_names)
 1. Drop the ``Indicator.Code`` column because I am only interested in the Indicator
 name (and I do not need a standardized code for it) 
 ```{R}
-id_cols_co2 <- c("Country.Name", "Country.Code", "Indicator.Name")
+id_cols_esg <- c("Country.Name", "Country.Code", "Indicator.Name")
 esg_raw <- subset(esg_raw, select = -c(Indicator.Code))
 ```
 2. Fix the names of the Year columns by removing the initial ``X`` character
 ```{R}
-raw_year_cols <- setdiff(colnames(esg_raw), c(id_cols_co2, "X"))
+raw_year_cols <- setdiff(colnames(esg_raw), c(id_cols_esg, "X"))
 # Modify only the columns defining the year
 colnames(esg_raw)[colnames(esg_raw) %in% raw_year_cols] <- str_replace(raw_year_cols, "X", "")
-clean_year_cols <- setdiff(colnames(esg_raw), c(id_cols_co2, "X"))
+clean_year_cols <- setdiff(colnames(esg_raw), c(id_cols_esg, "X"))
 ```
 3. Analyze the ESG indicators contained in the dataset and select the most relevant ones.
   In the following paragraphs, we will explain the selection criteria into details.
@@ -69,10 +70,6 @@ The dataset contains multiple ESG indicators so we decided to select only few of
 
 #### Number of NAs
 
-
-### Table
-Item | Price | # In stock
----|---|---
 
 First, the ESG indicators have been filtered based on their relevance for the
 CO2 emissions:
@@ -111,7 +108,6 @@ CO2 emissions:
 - School enrollment, primary and secondary (gross), gender parity index (GPI)
 
 
-### Summary
 ```{R}
 esg_selected_indicators_raw <- c(
     # Economy
@@ -167,7 +163,7 @@ colnames(nan_per_indicator_df) <- colnames(nan_per_indicator)
 # Add a row with the count of NAs for each year but considering all the selected
 # ``esg_selected_indicators_raw`` together
 total_na_per_year <- summarise_all(esg_clean_fewer_indicators, ~ sum(is.na(.)) / nrow(esg_clean_fewer_indicators))
-total_na_per_year[1, 1:4] <- "Sum_over_ESG_indicators"
+total_na_per_year[1, 1:length(id_cols_esg)] <- "Sum_over_ESG_indicators"
 nan_per_indicator_df[nrow(nan_per_indicator_df) + 1, ] <- total_na_per_year
 
 # Add a column with the count of NAs for each ESG indicator (aggregated over the years)
@@ -178,23 +174,29 @@ tail(nan_per_indicator_df)
 ### Plot
 ```{R}
 mean_for_selected_esg <- nan_per_indicator_df[nan_per_indicator_df[, "Indicator.Name"] == "Sum_over_ESG_indicators", "Sum_over_Years"]
-nan_per_year_plot <- ggplot(
+nan_per_esg_indicator_plot <- ggplot(
     data = nan_per_indicator_df, aes(x = Indicator.Name, y = Sum_over_Years)
 ) +
     geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
     geom_hline(yintercept = mean_for_selected_esg, linetype = "dashed", color = "blue") +
     annotate("text", nan_per_indicator_df[1, "Indicator.Name"], mean_for_selected_esg, hjust = -0.4, vjust = -1, label = "Mean NA ratio") +
     scale_x_discrete(labels = function(x) str_wrap(x, width = 60)) +
-    theme(text = element_text(size = 14), aspect.ratio = 5 / 9, axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1), legend.position = "right")
+    theme(text = element_text(size = 14), aspect.ratio = 5 / 9, axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1), legend.position = "right") +
+    labs(
+        title = "NA count ratio vs ESG indicator (from list1)",
+        y = "NA count ratio",
+        x = "ESG indicator",
+    )
 
-ggsave("nan_per_esg_indicator.png", nan_per_year_plot, width = 12, height = 10)
+
+ggsave("nan_per_esg_indicator.png", nan_per_esg_indicator_plot, width = 12, height = 10)
 ```
 ### Select 2 years from the time-series
 Count NA ratio for few selected ESG indicators in order to identify the year associated with the lowest number of NaNs
 
 ```{R}
 # Transform the dataset into a columnar format (instead of having one column for each year)
-nan_per_year_and_indicator <- melt(nan_per_indicator_df, id = c(id_cols_co2, "X"))
+nan_per_year_and_indicator <- melt(nan_per_indicator_df, id = c(id_cols_esg, "X"))
 
 colnames(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "variable"] <- "Year"
 names(nan_per_year_and_indicator)[names(nan_per_year_and_indicator) == "value"] <- "NA_count"
@@ -216,14 +218,11 @@ i. have a readable plot
 ii. highlight the trend where we see that the most recent years contains a lower number of NAs 
 iii. based on (ii), we wanted to be able to identify the number of NAs for all the most recent years
 ```{R}
-# min_year <- min(as.numeric(as.character(nan_per_year_and_indicator$Year)))
 # Select few ESG indicators and few years to make the plot more readable
 selected_years <- c(seq(1960, 2004, by = 10), seq(2005, 2016, by = 3), seq(2017, 2021, by = 1))
 nan_per_year_and_select_indicator <- filter(
     nan_per_year_and_indicator,
     nan_per_year_and_indicator$Indicator.Name %in% c(
-        # "Cause of death, by communicable diseases and maternal, prenatal and nutrition conditions (% of total)",
-        # "Droughts, floods, extreme temperatures (% of population, average 1990-2009)",
         "Sum_over_ESG_indicators",
         "Income share held by lowest 20%",
         "People using safely managed drinking water services (% of population)",
@@ -237,35 +236,43 @@ nan_per_year_plot <- ggplot(
 ) +
     geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
     scale_fill_discrete(labels = function(x) str_wrap(x, width = 12)) +
-    # scale_x_discrete(breaks = round(selected_years)) +
-    theme(legend.position = "right")
+    scale_y_continuous(breaks = seq(0, 1, by = 0.1)) +
+    scale_x_discrete(breaks = round(selected_years)) +
+    theme(legend.position = "right", aspect.ratio = 5 / 9) +
+    labs(
+        title = "NA count vs Year (ESG markers from list1)",
+        y = "NA count ratio",
+        x = "Year",
+        color = "ESG indicator"
+    )
 
-ggsave("nan_per_year_and_indicator.png", nan_per_year_plot)
+ggsave("nan_per_year_and_indicator.png", nan_per_year_plot, width = 9, height = 4)
 ```
 
 We observe that the number of NA varies slightly over the more recent years (2000-2020), but highly varies over the different ESG indicators.
 For time reasons, we will not analyze the number of NA further, even though some values could be interpolated based on the values in the previous and following years.
 Since I see that in the year 2019 there are fewer NaNs I only select data for that year.
 ```{R}
-SELECTED_YEAR <- "2018"
-esg_year_2018_columnar <- esg_clean_fewer_indicators[, c(id_cols_co2, SELECTED_YEAR)]
+MODERN_YEAR <- "2018"
+esg_year_2018_columnar <- esg_clean_fewer_indicators[, c(id_cols_esg, MODERN_YEAR)]
 
 esg_year_2018 <- pivot_wider(
     esg_year_2018_columnar,
     names_from = "Indicator.Name",
-    values_from = SELECTED_YEAR
+    values_from = MODERN_YEAR
 )
 head(esg_year_2018)
 ```
 
 #### Plot NAs for the selected year
 After selecting the year, we plot the NA count for the ESG indicators when considering the selected year 2018.
-Another possible approach was to consider the mean of the ESG indicator when considering not only the year 2018, but averaging the value in the year 2018 with the ones from the closest years 2017 and 2019.
+Another possible approach was to consider the mean of the ESG indicator when considering not only the year 2018,
+but averaging the value in the year 2018 with the ones from the closest years 2017 and 2019.
 On the other hand the plot does not show a significant decrease in the NA count.
 
 ```{R}
 nan_per_2018_plot <- ggplot(
-    data = nan_per_indicator_df, aes(x = Indicator.Name, y = nan_per_indicator_df[, SELECTED_YEAR])
+    data = nan_per_indicator_df, aes(x = Indicator.Name, y = nan_per_indicator_df[, MODERN_YEAR])
 ) +
     geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
     scale_x_discrete(labels = function(x) str_wrap(x, width = 60)) +
@@ -274,14 +281,19 @@ nan_per_2018_plot <- ggplot(
         aspect.ratio = 5 / 9,
         axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1),
         legend.position = "right"
+    ) +
+    labs(
+        title = "NA count vs ESG indicator in year 2018 (from list1)",
+        y = "NA count ratio",
+        x = "ESG indicator",
     )
 
-ggsave(paste0("nan_", SELECTED_YEAR, "_per_esg_indicator.png"), nan_per_2018_plot, width = 12, height = 10)
+ggsave(paste0("nan_", MODERN_YEAR, "_per_esg_indicator.png"), nan_per_2018_plot, width = 12, height = 10)
 ```
 ```{R}
-AVG_YEARS <- c(as.character(as.numeric(SELECTED_YEAR) - 1), SELECTED_YEAR, as.character(as.numeric(SELECTED_YEAR) + 1))
+AVG_YEARS <- c(as.character(as.numeric(MODERN_YEAR) - 1), MODERN_YEAR, as.character(as.numeric(MODERN_YEAR) + 1))
 nan_per_2018_plot <- ggplot(
-    data = nan_per_indicator_df, aes(x = Indicator.Name, y = rowMeans(nan_per_indicator_df[, AVG_YEARS]))
+    data = nan_per_indicator_df, aes(x = Indicator.Name, y = rowMeans(nan_per_indicator_df[, AVG_YEARS], na.rm = TRUE))
 ) +
     geom_bar(stat = "identity", position = position_dodge(), alpha = 0.5) +
     scale_x_discrete(labels = function(x) str_wrap(x, width = 60)) +
@@ -290,6 +302,11 @@ nan_per_2018_plot <- ggplot(
         aspect.ratio = 5 / 9,
         axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 1),
         legend.position = "right"
+    ) +
+    labs(
+        title = "NA count vs. ESG indicators, averaged over years 2017-2019 (from list1)",
+        y = "NA count ratio",
+        x = "ESG indicator",
     )
 
 ggsave("nan_mean_2018_per_esg_indicator.png", nan_per_2018_plot, width = 12, height = 10)
@@ -311,6 +328,8 @@ esg_selected_indicators <- c(
     "Mortality rate, under-5 (per 1,000 live births)",
     "School enrollment, primary (% gross)"
 )
+
+
 clean_cols <- c("Country.Code", "Country.Name", esg_selected_indicators)
 esg_clean <- esg_year_2018[, clean_cols]
 esg_clean <- data.frame(drop_na(esg_clean))
@@ -323,7 +342,7 @@ head(esg_clean)
 ### Cleaning the CO2 emission dataset
 1. Filter on the Year column based on the same selected year 2018, and then drop the ``year`` column:
 ```{R}
-owid_co2_2018 <- owid_co2_raw[owid_co2_raw[, "year"] == 2018, ]
+owid_co2_2018 <- owid_co2_raw[owid_co2_raw[, "year"] == MODERN_YEAR, ]
 owid_co2_2018 <- subset(owid_co2_2018, select = -c(year))
 ```
 2. Filter the Country codes, based on the ones available in the ESG dataset
@@ -368,8 +387,8 @@ colnames(merged_dataset)
 ```
 2. Compute values per capita:
 ```{R}
-merged_dataset[,"total_ghg_per_capita"] <- merged_dataset[,"total_ghg"] / merged_dataset[,"population"]
-merged_dataset[,"total_ghg_excluding_lucf_per_capita"] <- merged_dataset[,"total_ghg_excluding_lucf"] / merged_dataset[,"population"]
+merged_dataset[, "total_ghg_per_capita"] <- merged_dataset[, "total_ghg"] / merged_dataset[, "population"]
+merged_dataset[, "total_ghg_excluding_lucf_per_capita"] <- merged_dataset[, "total_ghg_excluding_lucf"] / merged_dataset[, "population"]
 ```
 
 # Ordinary Linear Regression (OLS)
@@ -392,43 +411,72 @@ co2_cols <- c(
     "total_ghg_per_capita",
     "total_ghg_excluding_lucf_per_capita"
 )
-esg_cols <- setdiff(colnames(merged_dataset), c(metadata_cols,co2_cols))
-
-covariate_sum <- paste(c(esg_cols, "gdp"), sep =" ", collapse=" + ")
-co2_ols_formula <- as.formula(paste("co2_per_capita ~ ",covariate_sum,sep = ""))
-print(paste0("Computing OLS with formula: ", co2_ols_formula)
-model_1 <- lm(formula=co2_ols_formula, data=merged_dataset)
-summary(model_1)
+esg_cols <- setdiff(colnames(merged_dataset), c(metadata_cols, co2_cols))
+covariates <- c("gdp", esg_cols)
 ```
-```{R}
 
-for (indicator_id in 1:length(indicator_cols)) {
-    indicator_name <- indicator_cols[indicator_id]
-    histo_plot <- ggplot(esg_clean, aes(x = esg_clean[, indicator_name])) +
+```{R}
+vars <- c(covariates, "co2_per_capita", "total_ghg_per_capita")
+vars_full_names <- c(
+    "gdp",
+    esg_selected_indicators,
+    "co2_per_capita",
+    "total_ghg_per_capita"
+)
+
+for (indicator_id in 1:length(vars)) {
+    indicator_full_name <- vars_full_names[indicator_id]
+    indicator_name <- vars[indicator_id]
+    distro_plot <- ggplot(merged_dataset, aes(x = merged_dataset[, indicator_name])) +
         theme(text = element_text(size = 20)) +
         geom_histogram(aes(fill = ..count..), bins = 10, color = "black") +
-        scale_x_continuous(
-            name = indicator_name,
-            # breaks = seq(0, max(), 25),
-            # limits = c(0, 200)
-        ) +
-        scale_y_continuous(name = "Count") +
-        ggtitle(indicator_name) +
-        # scale_fill_gradient("Count", low = "green", high = "red")
-        geom_density(alpha = .4, fill = "#FF6666")
+        scale_x_continuous(name = indicator_name) +
+        xlab(indicator_full_name) +
+        scale_y_continuous(name = "Count")
+    # geom_density(alpha = .4, fill = "#FF6666")
 
-
-    # geom_bar(colour = "black", fill = "white") + # bins=10, stat="count",
-    #     geom_density(alpha = .2, fill = "#FF6666")
-    filename <- str_replace(paste0("distribution_", indicator_name, ".png"), "%", "")
+    filename <- str_replace_all(paste0("distribution_", indicator_full_name, ".png"), c("%" = "", ":" = "-"))
     print(paste0("Saving to ", filename))
-    ggsave(filename, histo_plot)
+    ggsave(filename, distro_plot)
 }
 ```
 
-```
-Plot the relevant variables like: 
+# Fitting the Regression Models
 
-```
+### 1. Ordinary Linear Model with all covariates
 ```{R}
+covariate_sum <- paste(covariates, sep = " ", collapse = " + ")
+co2_ols_formula <- as.formula(paste("co2_per_capita ~ ", covariate_sum, sep = ""))
+print(paste0("Computing OLS with formula: ", co2_ols_formula))
+
+model_1 <- lm(formula = co2_ols_formula, data = merged_dataset)
+summary(model_1)
+
+
+# Computing and plotting the residuals
+model_1_df <- augment(model_1)
+plot_residual <- ggplot(model_1_df, aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_smooth(method = "loess")
+ggsave("residuals_mod1.png", plot_residual)
+```
+
+### 2. Quadratic Model with few covariates
+```{R}
+model_2 <- lm(
+    formula = "co2_per_capita ~
+                gdp*Individuals.using.the.Internet....of.population. +
+                gdp*Adjusted.savings..natural.resources.depletion....of.GNI. +
+                Individuals.using.the.Internet....of.population.*Individuals.using.the.Internet....of.population. +
+                Adjusted.savings..natural.resources.depletion....of.GNI.*Adjusted.savings..natural.resources.depletion....of.GNI.",
+    data = merged_dataset
+)
+summary(model_2)
+
+# Computing and plotting the residuals
+model_2_df <- augment(model_2)
+plot_residual_mod2 <- ggplot(model_2_df, aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_smooth(method = "loess")
+ggsave("residuals_mod2.png", plot_residual_mod2)
 ```
