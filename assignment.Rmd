@@ -429,7 +429,7 @@ for (indicator_id in 1:length(vars)) {
     indicator_name <- vars[indicator_id]
     distro_plot <- ggplot(merged_dataset, aes(x = merged_dataset[, indicator_name])) +
         theme(text = element_text(size = 20)) +
-        geom_histogram(aes(fill = ..count..), bins = 10, color = "black") +
+        geom_histogram(aes(fill = after_stat(count)), bins = 10, color = "black") +
         scale_x_continuous(name = indicator_name) +
         xlab(indicator_full_name) +
         scale_y_continuous(name = "Count")
@@ -479,4 +479,25 @@ plot_residual_mod2 <- ggplot(model_2_df, aes(x = .fitted, y = .resid)) +
     geom_point() +
     geom_smooth(method = "loess")
 ggsave("residuals_mod2.png", plot_residual_mod2)
+```
+
+### 3. Non-linear Model with all covariates
+```{R}
+merged_dataset[, "log_co2_per_capita"] <- log(merged_dataset[, "co2_per_capita"])
+model_3 <- lm(
+    formula = "log_co2_per_capita ~
+                gdp*Individuals.using.the.Internet....of.population. +
+                gdp*Adjusted.savings..natural.resources.depletion....of.GNI. +
+                Individuals.using.the.Internet....of.population.*Individuals.using.the.Internet....of.population. +
+                Adjusted.savings..natural.resources.depletion....of.GNI.*Adjusted.savings..natural.resources.depletion....of.GNI.",
+    data = merged_dataset
+)
+summary(model_3)
+
+# Computing and plotting the residuals
+model_3_df <- augment(model_3)
+plot_residual_mod2 <- ggplot(model_3_df, aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_smooth(method = "loess")
+ggsave("residuals_mod3.png", plot_residual_mod2)
 ```
